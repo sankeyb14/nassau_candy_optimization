@@ -63,7 +63,7 @@ def load_data():
 @st.cache_resource
 def load_model():
     return joblib.load(
-        "/content/nassau_candy_final_model.joblib"
+        "nassau_candy_final_model.joblib"
     )
 
 
