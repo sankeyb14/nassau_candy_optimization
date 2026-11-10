@@ -57,15 +57,7 @@ def load_data():
         top_recommendations,
         kpis
     )
-
-
-@st.cache_resource
-def load_model():
-    return joblib.load(
-        "nassau_candy_final_model.joblib"
-    )
-
-
+    
 (
     engineered_df,
     scenario_df,
