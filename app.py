@@ -24,23 +24,31 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     engineered_df = pd.read_csv(
-        "/content/nassau_candy_engineered.csv"
+        "nassau_candy_engineered.csv"
     )
 
     scenario_df = pd.read_csv(
-        "/content/nassau_candy_scenario_results.csv"
+        "nassau_candy_scenario_results.csv"
     )
 
     recommendation_df = pd.read_csv(
-        "/content/nassau_candy_recommendation_summary.csv"
+        "nassau_candy_recommendation_summary.csv"
     )
 
     top_recommendations = pd.read_csv(
-        "/content/nassau_candy_top_recommendations.csv"
+        "nassau_candy_top_recommendations.csv"
     )
 
     kpis = pd.read_csv(
-        "/content/nassau_candy_kpis.csv"
+        "nassau_candy_kpis.csv"
+    )
+
+    return (
+        engineered_df,
+        scenario_df,
+        recommendation_df,
+        top_recommendations,
+        kpis
     )
 
     return (
