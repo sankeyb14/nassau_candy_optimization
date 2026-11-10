@@ -157,10 +157,6 @@ kpi4.metric(
 # FILTERED DATA + DYNAMIC RECOMMENDATION SCORING
 # =========================================================
 
-filtered_scenarios = scenario_df[
-    scenario_df["Product Name"] == selected_product
-].copy()
-
 if selected_region != "All":
     filtered_scenarios = filtered_scenarios[
         filtered_scenarios["Region"] == selected_region
