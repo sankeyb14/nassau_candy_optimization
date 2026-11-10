@@ -626,11 +626,11 @@ if len(filtered_scenarios) > 0:
         st.subheader("High-Risk Scenario Examples")
 
         risk_display = (
-            high_risk
-            .sort_values(
-                "Recommendation Score",
-                ascending=False
-            )
+    high_risk
+    .sort_values(
+        "Recommendation Score",
+        ascending=False
+    )
             .head(10)
             .copy()
         )
