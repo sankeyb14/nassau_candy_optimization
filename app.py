@@ -151,7 +151,7 @@ kpi1.metric(
 
 kpi2.metric(
     "Logistics Impact Variance",
-    f"{kpis.loc[1, 'Value']:.2f}"
+    f"{kpis.loc[1,'Value']:.2f}"
 )
 
 kpi3.metric(
