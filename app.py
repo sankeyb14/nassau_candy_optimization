@@ -257,6 +257,9 @@ filtered_scenarios["Recommendation Score"] = (
 # GUARDRAILS
 # =========================================================
 
+# These risk flags are independent of the
+# speed-vs-profit slider.
+
 filtered_scenarios["Low_Confidence_Flag"] = (
     filtered_scenarios["Confidence Score"] < 50
 )
@@ -281,7 +284,6 @@ filtered_scenarios["Recommendation_Eligible"] = (
     & (filtered_scenarios["Confidence Score"] >= 50)
     & (~filtered_scenarios["High_Risk_Flag"])
 )
-
 
 # =========================================================
 # DECISION-LEVEL RECOMMENDATIONS
