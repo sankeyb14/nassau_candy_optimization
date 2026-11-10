@@ -150,7 +150,7 @@ kpi1.metric(
 )
 
 kpi2.metric(
-    "Impact Stability",
+    "Logistics Impact Variance",
     f"{kpis.loc[1, 'Value']:.2f}"
 )
 
@@ -166,15 +166,11 @@ kpi4.metric(
 
 
 # =========================================================
-# FILTERED DATA
+# FILTERED DATA + DYNAMIC RECOMMENDATION SCORING
 # =========================================================
 
 filtered_scenarios = scenario_df[
     scenario_df["Product Name"] == selected_product
-].copy()
-
-filtered_recommendations = recommendation_df[
-    recommendation_df["Product Name"] == selected_product
 ].copy()
 
 if selected_region != "All":
@@ -182,19 +178,169 @@ if selected_region != "All":
         filtered_scenarios["Region"] == selected_region
     ]
 
-    filtered_recommendations = filtered_recommendations[
-        filtered_recommendations["Region"] == selected_region
-    ]
-
 if selected_ship_mode != "All":
     filtered_scenarios = filtered_scenarios[
         filtered_scenarios["Ship Mode"] == selected_ship_mode
     ]
 
-    filtered_recommendations = filtered_recommendations[
-        filtered_recommendations["Ship Mode"] == selected_ship_mode
-    ]
 
+# =========================================================
+# DYNAMIC SCORE COMPONENTS
+# =========================================================
+
+filtered_scenarios["Lead_Time_Benefit"] = (
+    filtered_scenarios["Lead Time Reduction %"].clip(lower=0)
+)
+
+filtered_scenarios["Risk_Reduction"] = (
+    -filtered_scenarios["Distance Change %"].clip(upper=0)
+)
+
+filtered_scenarios["Profit_Value"] = (
+    filtered_scenarios["Gross Profit"]
+    * filtered_scenarios["Profit Margin"]
+)
+
+
+def min_max_scale(series):
+
+    min_value = series.min()
+    max_value = series.max()
+
+    if max_value == min_value:
+        return pd.Series(50.0, index=series.index)
+
+    return (
+        (series - min_value)
+        / (max_value - min_value)
+    ) * 100
+
+
+filtered_scenarios["Lead_Time_Score"] = min_max_scale(
+    filtered_scenarios["Lead_Time_Benefit"]
+)
+
+filtered_scenarios["Risk_Reduction_Score"] = min_max_scale(
+    filtered_scenarios["Risk_Reduction"]
+)
+
+filtered_scenarios["Profit_Value_Score"] = min_max_scale(
+    filtered_scenarios["Profit_Value"]
+)
+
+
+# =========================================================
+# SPEED ↔ PROFIT SLIDER
+# =========================================================
+
+speed_weight = (
+    0.20
+    + (0.60 * speed_vs_profit / 100)
+)
+
+profit_weight = (
+    0.80
+    - (0.60 * speed_vs_profit / 100)
+)
+
+risk_weight = 0.20
+
+
+filtered_scenarios["Recommendation Score"] = (
+    speed_weight * filtered_scenarios["Lead_Time_Score"]
+    + risk_weight * filtered_scenarios["Risk_Reduction_Score"]
+    + profit_weight * filtered_scenarios["Profit_Value_Score"]
+)
+
+
+# =========================================================
+# GUARDRAILS
+# =========================================================
+
+filtered_scenarios["Low_Confidence_Flag"] = (
+    filtered_scenarios["Confidence Score"] < 50
+)
+
+filtered_scenarios["Large_Distance_Increase_Flag"] = (
+    filtered_scenarios["Distance Change %"] > 25
+)
+
+filtered_scenarios["Negative_Lead_Time_Flag"] = (
+    filtered_scenarios["Lead Time Reduction %"] <= 0
+)
+
+filtered_scenarios["High_Risk_Flag"] = (
+    filtered_scenarios["Low_Confidence_Flag"]
+    | filtered_scenarios["Large_Distance_Increase_Flag"]
+    | filtered_scenarios["Negative_Lead_Time_Flag"]
+)
+
+filtered_scenarios["Recommendation_Eligible"] = (
+    (filtered_scenarios["Lead Time Reduction %"] > 0)
+    & (filtered_scenarios["Distance Change_km"] < 0)
+    & (filtered_scenarios["Confidence Score"] >= 50)
+    & (~filtered_scenarios["High_Risk_Flag"])
+)
+
+
+# =========================================================
+# DECISION-LEVEL RECOMMENDATIONS
+# =========================================================
+
+eligible_rows = filtered_scenarios[
+    filtered_scenarios["Recommendation_Eligible"]
+].copy()
+
+
+if len(eligible_rows) > 0:
+
+    filtered_recommendations = (
+        eligible_rows
+        .groupby(
+            [
+                "Product Name",
+                "Current Factory",
+                "Scenario Factory",
+                "Region",
+                "Ship Mode"
+            ],
+            as_index=False
+        )
+        .agg(
+            Avg_Lead_Time_Reduction_Pct=(
+                "Lead Time Reduction %",
+                "mean"
+            ),
+            Avg_Distance_Change_Pct=(
+                "Distance Change %",
+                "mean"
+            ),
+            Avg_Distance_Change_km=(
+                "Distance Change_km",
+                "mean"
+            ),
+            Avg_Confidence_Score=(
+                "Confidence Score",
+                "mean"
+            ),
+            Recommendation_Score=(
+                "Recommendation Score",
+                "mean"
+            ),
+            Scenario_Count=(
+                "Recommendation Score",
+                "count"
+            )
+        )
+        .sort_values(
+            "Recommendation_Score",
+            ascending=False
+        )
+    )
+
+else:
+
+    filtered_recommendations = pd.DataFrame()
 
 # =========================================================
 # MODULE 1
