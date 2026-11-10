@@ -478,11 +478,19 @@ if len(filtered_recommendations) > 0:
     )
 
 else:
+
     st.warning(
-        "No eligible recommendation matches the selected filters."
+        "No low-risk recommendation passes the current "
+        "optimization guardrails for this product and filter."
     )
 
-
+    st.info(
+        "Alternative factory scenarios were evaluated, but "
+        "none currently meets all eligibility requirements. "
+        "See the Risk & Impact Panel below for rejected "
+        "scenario reasons."
+    )
+    
 # =========================================================
 # MODULE 3
 # RECOMMENDATION DASHBOARD
@@ -527,11 +535,18 @@ if len(filtered_recommendations) > 0:
     )
 
 else:
+
     st.warning(
-        "No recommendations available for the selected filters."
+        "No eligible recommendations are available "
+        "for the selected product and filters."
     )
 
-
+    st.caption(
+        "This does not mean alternative factories were not "
+        "evaluated. It means the evaluated alternatives did "
+        "not pass the project's safety and confidence guardrails."
+    )
+    
 # =========================================================
 # MODULE 4
 # RISK & IMPACT PANEL
@@ -539,74 +554,136 @@ else:
 
 st.header("4. Risk & Impact Panel")
 
-if len(filtered_recommendations) > 0:
+if len(filtered_scenarios) > 0:
 
-    low_confidence = (
-        filtered_recommendations[
-            filtered_recommendations[
-                "Avg_Confidence_Score"
-            ] < 50
-        ]
-    )
+    low_confidence = filtered_scenarios[
+        filtered_scenarios["Low_Confidence_Flag"]
+    ]
 
-    distance_increase = (
-        filtered_recommendations[
-            filtered_recommendations[
-                "Avg_Distance_Change_Pct"
-            ] > 25
-        ]
-    )
+    distance_increase = filtered_scenarios[
+        filtered_scenarios["Large_Distance_Increase_Flag"]
+    ]
+
+    negative_lead_time = filtered_scenarios[
+        filtered_scenarios["Negative_Lead_Time_Flag"]
+    ]
+
+    high_risk = filtered_scenarios[
+        filtered_scenarios["High_Risk_Flag"]
+    ]
+
+    eligible_count = filtered_scenarios[
+        filtered_scenarios["Recommendation_Eligible"]
+    ].shape[0]
+
+    # -----------------------------------------------------
+    # Risk summary
+    # -----------------------------------------------------
 
     st.subheader("Risk Alerts")
 
-    r1, r2, r3 = st.columns(3)
+    r1, r2, r3, r4 = st.columns(4)
 
     r1.metric(
-        "Low-Confidence Options",
+        "Low-Confidence Scenarios",
         len(low_confidence)
     )
 
     r2.metric(
-        "Large Distance Increase",
+        "Distance Increase",
         len(distance_increase)
     )
 
     r3.metric(
-        "Eligible Recommendations",
-        len(filtered_recommendations)
+        "Negative Lead-Time Gain",
+        len(negative_lead_time)
     )
+
+    r4.metric(
+        "Eligible Scenarios",
+        eligible_count
+    )
+
+    # -----------------------------------------------------
+    # Methodological warning
+    # -----------------------------------------------------
 
     st.warning(
-        "Monetary profit impact is not directly estimated because "
-        "the dataset does not contain reassignment-specific shipping "
-        "cost data. Distance change is used as the operational "
-        "logistics-impact proxy."
+        "Monetary profit impact is not directly estimated "
+        "because the dataset does not contain reassignment-"
+        "specific shipping cost data. Distance change is used "
+        "as the operational logistics-impact proxy."
     )
 
-    if len(low_confidence) > 0:
+    # -----------------------------------------------------
+    # High-risk scenarios
+    # -----------------------------------------------------
 
-        st.subheader("Low-Confidence Recommendations")
+    if len(high_risk) > 0:
+
+        st.subheader("High-Risk Scenario Examples")
+
+        risk_display = (
+            high_risk
+            .sort_values(
+                "Recommendation Score",
+                ascending=False
+            )
+            .head(10)
+            .copy()
+        )
+
+        risk_display["Risk Reason"] = np.select(
+            [
+                risk_display["Low_Confidence_Flag"],
+                risk_display["Large_Distance_Increase_Flag"],
+                risk_display["Negative_Lead_Time_Flag"]
+            ],
+            [
+                "Low confidence",
+                "Distance increase",
+                "Negative lead-time improvement"
+            ],
+            default="Multiple risk factors"
+        )
+
+        risk_display = risk_display[
+            [
+                "Current Factory",
+                "Scenario Factory",
+                "Region",
+                "Ship Mode",
+                "Lead Time Reduction %",
+                "Distance Change %",
+                "Confidence Score",
+                "Recommendation Score",
+                "Risk Reason"
+            ]
+        ]
 
         st.dataframe(
-            low_confidence[
-                [
-                    "Current Factory",
-                    "Scenario Factory",
-                    "Region",
-                    "Ship Mode",
-                    "Avg_Confidence_Score",
-                    "Recommendation_Score"
-                ]
-            ],
+            risk_display.style.format({
+                "Lead Time Reduction %": "{:.2f}%",
+                "Distance Change %": "{:.2f}%",
+                "Confidence Score": "{:.1f}",
+                "Recommendation Score": "{:.2f}"
+            }),
             use_container_width=True
         )
 
+    else:
+
+        st.success(
+            "No high-risk scenarios were identified "
+            "for the current filters."
+        )
+
 else:
+
     st.info(
-        "No recommendation risk data available for the selected filters."
+        "No scenario data available for the selected filters."
     )
-
-
+    
 # =========================================================
 # FOOTER
 # =========================================================
